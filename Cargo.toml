@@ -1,6 +1,9 @@
 [package]
 authors = ["Antoni Boucher <bouanto@zoho.com>"]
+description = "GLib inter-thread communication library"
+license = "MIT"
 name = "glib-itc"
+repository = "https://github.com/antoyo/glib-itc-rs"
 version = "0.1.0"
 
 [dependencies]
