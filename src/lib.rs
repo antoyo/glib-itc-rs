@@ -22,50 +22,35 @@
 extern crate glib;
 extern crate glib_sys;
 extern crate libc;
-extern crate rand;
-extern crate unix_socket;
 
-use std::env::temp_dir;
-use std::fs::remove_file;
 use std::os::unix::io::AsRawFd;
+use std::os::unix::net::UnixDatagram;
 use std::mem::transmute;
-use std::path::{Path, PathBuf};
 use std::ptr::null_mut;
 
 use glib::Continue;
 use glib::translate::ToGlib;
-use rand::random;
-use unix_socket::UnixDatagram;
 
 pub fn channel() -> (Sender, Receiver) {
-    let sender = Sender::new();
-    let receiver = Receiver::new(&sender.path);
+    let (sender_socket, receiver_socket) = UnixDatagram::pair().unwrap();
+    let sender = Sender::new(sender_socket);
+    let receiver = Receiver::new(receiver_socket);
     (sender, receiver)
 }
 
 pub struct Sender {
-    path: PathBuf,
     socket: UnixDatagram,
 }
 
 impl Sender {
-    fn new() -> Self {
-        let mut temp_dir = temp_dir();
-        temp_dir.push(format!("socket{}", random::<u32>()));
+    fn new(socket: UnixDatagram) -> Self {
         Sender {
-            path: temp_dir,
-            socket: UnixDatagram::unbound().unwrap(),
+            socket: socket,
         }
     }
 
     pub fn send(&self) {
-        self.socket.send_to(b"", &self.path).unwrap();
-    }
-}
-
-impl Drop for Sender {
-    fn drop(&mut self) {
-        remove_file(&self.path).ok();
+        self.socket.send(b"").unwrap();
     }
 }
 
@@ -75,10 +60,10 @@ pub struct Receiver {
 }
 
 impl Receiver {
-    fn new<P: AsRef<Path>>(path: P) -> Self {
+    fn new(socket: UnixDatagram) -> Self {
         Receiver {
             channel: null_mut(),
-            socket: UnixDatagram::bind(path).unwrap(),
+            socket: socket,
         }
     }
 
@@ -99,8 +84,8 @@ impl Drop for Receiver {
     }
 }
 
-unsafe extern "C" fn io_watch_trampoline(source: *mut glib_sys::GIOChannel, condition: glib_sys::GIOCondition, data: *mut libc::c_void) -> libc::c_int {
-    let status = unsafe { glib_sys::g_io_channel_read_unichar(source, null_mut(), null_mut()) };
+unsafe extern "C" fn io_watch_trampoline(source: *mut glib_sys::GIOChannel, _condition: glib_sys::GIOCondition, data: *mut libc::c_void) -> libc::c_int {
+    glib_sys::g_io_channel_read_unichar(source, null_mut(), null_mut());
     let func: &Box<Fn() -> Continue + 'static> = &*(data as *const _);
     func().to_glib()
 }
