@@ -67,11 +67,11 @@ impl Receiver {
         }
     }
 
-    pub fn connect_recv<F: Fn() -> Continue + 'static>(&mut self, callback: F) {
+    pub fn connect_recv<F: FnMut() -> Continue + 'static>(&mut self, callback: F) {
         let fd = self.socket.as_raw_fd();
         self.channel = unsafe { glib_sys::g_io_channel_unix_new(fd) };
         let trampoline: glib_sys::GIOFunc = unsafe { transmute(io_watch_trampoline as usize) };
-        let func: Box<Box<Fn() -> Continue + 'static>> = Box::new(Box::new(callback));
+        let func: Box<Box<FnMut() -> Continue + 'static>> = Box::new(Box::new(callback));
         let user_data: *mut libc::c_void = Box::into_raw(func) as *mut _;
         unsafe { glib_sys::g_io_add_watch(self.channel, glib_sys::G_IO_IN, trampoline, user_data) };
     }
