@@ -23,9 +23,11 @@ extern crate glib;
 extern crate glib_sys;
 extern crate libc;
 
+use std::io::Error;
+use std::mem::transmute;
+use std::net::Shutdown;
 use std::os::unix::io::AsRawFd;
 use std::os::unix::net::UnixDatagram;
-use std::mem::transmute;
 use std::ptr::null_mut;
 
 use glib::Continue;
@@ -47,6 +49,11 @@ impl Sender {
         Sender {
             socket: socket,
         }
+    }
+
+    pub fn close(&self) -> Result<(), Error> {
+        self.socket.shutdown(Shutdown::Both)?;
+        Ok(())
     }
 
     pub fn send(&self) {
