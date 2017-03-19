@@ -4,7 +4,7 @@ description = "GLib inter-thread communication library"
 license = "MIT"
 name = "glib-itc"
 repository = "https://github.com/antoyo/glib-itc-rs"
-version = "0.1.2"
+version = "0.1.3-pre"
 
 [dependencies]
 glib = "^0.1.2"
