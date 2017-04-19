@@ -46,6 +46,7 @@ fn test() {
     {
         let num = num.clone();
         receiver.connect_recv(move || {
+            println!("Receive");
             let value = num.fetch_add(1, Relaxed);
             if value >= 5 {
                 gtk::main_quit();
