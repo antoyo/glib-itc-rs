@@ -1,0 +1,10 @@
+= glib-itc
+
+GLib Inter-thread communication library, written in Rust.
+
+image:https://img.shields.io/appveyor/ci/antoyo/glib-itc-rs.svg[link="https://ci.appveyor.com/project/antoyo/glib-itc-rs"]
+//image:https://img.shields.io/coveralls/antoyo/glib-itc.svg[link="https://coveralls.io/github/antoyo/glib-itc"]
+image:https://img.shields.io/crates/v/glib-itc.svg[link="https://crates.io/crates/glib-itc"]
+image:https://img.shields.io/badge/rust-documentation-blue.svg[link="https://docs.rs/glib-itc/"]
+image:https://img.shields.io/crates/d/glib-itc.svg[link="https://crates.io/crates/glib-itc"]
+image:https://img.shields.io/crates/l/glib-itc.svg[link="LICENSE"]
