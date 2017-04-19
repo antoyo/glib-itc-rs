@@ -19,43 +19,11 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-extern crate glib;
-extern crate glib_itc;
-extern crate gtk;
+#[cfg(not(windows))]
+#[path = "unix.rs"]
+mod sys;
+#[cfg(windows)]
+#[path = "windows.rs"]
+mod sys;
 
-use std::thread;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering::Relaxed;
-use std::time::Duration;
-
-use glib::Continue;
-use glib_itc::channel;
-
-fn main() {
-    gtk::init().unwrap();
-
-    let num = AtomicUsize::new(0);
-    let (mut sender, mut receiver) = channel();
-    thread::spawn(move || {
-        for _ in 0..5 {
-            sender.send();
-            println!("Send");
-            thread::sleep(Duration::from_millis(1000));
-        }
-        println!("End");
-        sender.send();
-    });
-    receiver.connect_recv(move || {
-        let value = num.load(Relaxed) + 1;
-        num.store(value, Relaxed);
-        println!("Received");
-        if value > 5 {
-            gtk::main_quit();
-            Continue(false)
-        }
-        else {
-            Continue(true)
-        }
-    });
-    gtk::main();
-}
+pub use self::sys::*;

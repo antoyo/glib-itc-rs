@@ -23,53 +23,53 @@ extern crate glib;
 extern crate glib_sys;
 extern crate libc;
 
+mod socket_pair;
+
 use std::io::Error;
 use std::mem::transmute;
-use std::net::Shutdown;
-use std::os::unix::io::AsRawFd;
-use std::os::unix::net::UnixDatagram;
 use std::ptr::null_mut;
 
 use glib::Continue;
 use glib::translate::ToGlib;
 
+use socket_pair::{SocketReceiver, SocketSender, pair};
+
 pub fn channel() -> (Sender, Receiver) {
-    let (sender_socket, receiver_socket) = UnixDatagram::pair().unwrap();
+    let (sender_socket, receiver_socket) = pair().unwrap();
     let sender = Sender::new(sender_socket);
     let receiver = Receiver::new(receiver_socket);
     (sender, receiver)
 }
 
 pub struct Sender {
-    socket: UnixDatagram,
+    socket: SocketSender,
 }
 
 impl Sender {
-    fn new(socket: UnixDatagram) -> Self {
+    fn new(socket: SocketSender) -> Self {
         Sender {
             socket: socket,
         }
     }
 
     pub fn close(&self) -> Result<(), Error> {
-        self.socket.shutdown(Shutdown::Both)?;
+        self.socket.close()?;
         Ok(())
     }
 
-    pub fn send(&self) {
-        self.socket.send(b"").unwrap();
+    pub fn send(&mut self) {
+        self.socket.send().unwrap();
     }
 }
 
 pub struct Receiver {
     channel: *mut glib_sys::GIOChannel,
-    _socket: UnixDatagram,
+    _socket: SocketReceiver,
 }
 
 impl Receiver {
-    fn new(socket: UnixDatagram) -> Self {
-        let fd = socket.as_raw_fd();
-        let channel = unsafe { glib_sys::g_io_channel_unix_new(fd) };
+    fn new(socket: SocketReceiver) -> Self {
+        let channel = socket.to_channel();
         Receiver {
             channel: channel,
             _socket: socket,

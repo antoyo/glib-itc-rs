@@ -19,43 +19,44 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-extern crate glib;
-extern crate glib_itc;
-extern crate gtk;
+use std::io::{self, Error, Write};
+use std::os::windows::io::AsRawSocket;
+use std::net::{Shutdown, TcpListener, TcpStream};
 
-use std::thread;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering::Relaxed;
-use std::time::Duration;
+use glib_sys;
+use libc;
 
-use glib::Continue;
-use glib_itc::channel;
+pub struct SocketReceiver(TcpStream);
 
-fn main() {
-    gtk::init().unwrap();
+impl SocketReceiver {
+    pub fn to_channel(&self) -> *mut glib_sys::GIOChannel {
+        let fd = self.0.as_raw_socket();
+        unsafe { g_io_channel_win32_new_socket(fd) }
+    }
+}
 
-    let num = AtomicUsize::new(0);
-    let (mut sender, mut receiver) = channel();
-    thread::spawn(move || {
-        for _ in 0..5 {
-            sender.send();
-            println!("Send");
-            thread::sleep(Duration::from_millis(1000));
-        }
-        println!("End");
-        sender.send();
-    });
-    receiver.connect_recv(move || {
-        let value = num.load(Relaxed) + 1;
-        num.store(value, Relaxed);
-        println!("Received");
-        if value > 5 {
-            gtk::main_quit();
-            Continue(false)
-        }
-        else {
-            Continue(true)
-        }
-    });
-    gtk::main();
+pub struct SocketSender(TcpStream);
+
+impl SocketSender {
+    pub fn close(&self) -> Result<(), Error> {
+        self.0.shutdown(Shutdown::Both)
+    }
+
+    pub fn send(&mut self) -> io::Result<usize> {
+        self.0.write(b" ")
+    }
+}
+
+pub fn pair() -> io::Result<(SocketSender, SocketReceiver)> {
+    let listener = TcpListener::bind("localhost:0")?;
+    let addr = listener.local_addr()?;
+    let receiver_socket = TcpStream::connect(addr)?;
+    receiver_socket.set_nonblocking(true)?;
+    let (sender_socket, _) = listener.accept()?;
+    receiver_socket.set_nonblocking(false)?;
+    Ok((SocketSender(sender_socket), SocketReceiver(receiver_socket)))
+}
+
+extern "C" {
+    fn g_io_channel_win32_new_socket(socket: libc::c_int) -> *mut glib_sys::GIOChannel;
 }
