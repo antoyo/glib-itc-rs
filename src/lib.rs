@@ -22,57 +22,53 @@
 extern crate glib;
 extern crate glib_sys;
 extern crate libc;
+extern crate os_pipe;
 
-use std::io::Error;
+use std::io::Write;
 use std::mem::transmute;
-use std::net::Shutdown;
+#[cfg(unix)]
 use std::os::unix::io::AsRawFd;
-use std::os::unix::net::UnixDatagram;
+#[cfg(windows)]
+use std::os::windows::io::AsRawHandle;
 use std::ptr::null_mut;
 
 use glib::Continue;
 use glib::translate::ToGlib;
+use os_pipe::{PipeReader, PipeWriter, pipe};
 
 pub fn channel() -> (Sender, Receiver) {
-    let (sender_socket, receiver_socket) = UnixDatagram::pair().unwrap();
-    let sender = Sender::new(sender_socket);
-    let receiver = Receiver::new(receiver_socket);
+    let (reader, writer) = pipe().unwrap();
+    let sender = Sender::new(writer);
+    let receiver = Receiver::new(reader);
     (sender, receiver)
 }
 
 pub struct Sender {
-    socket: UnixDatagram,
+    writer: PipeWriter,
 }
 
 impl Sender {
-    fn new(socket: UnixDatagram) -> Self {
+    fn new(writer: PipeWriter) -> Self {
         Sender {
-            socket: socket,
+            writer: writer,
         }
     }
 
-    pub fn close(&self) -> Result<(), Error> {
-        self.socket.shutdown(Shutdown::Both)?;
-        Ok(())
-    }
-
-    pub fn send(&self) {
-        self.socket.send(b"").unwrap();
+    pub fn send(&mut self) {
+        self.writer.write(b" ").unwrap();
     }
 }
 
 pub struct Receiver {
     channel: *mut glib_sys::GIOChannel,
-    _socket: UnixDatagram,
+    _reader: PipeReader,
 }
 
 impl Receiver {
-    fn new(socket: UnixDatagram) -> Self {
-        let fd = socket.as_raw_fd();
-        let channel = unsafe { glib_sys::g_io_channel_unix_new(fd) };
+    fn new(reader: PipeReader) -> Self {
         Receiver {
-            channel: channel,
-            _socket: socket,
+            channel: create_channel(&reader),
+            _reader: reader,
         }
     }
 
@@ -89,6 +85,18 @@ impl Drop for Receiver {
         unsafe { glib_sys::g_io_channel_shutdown(self.channel, 0, null_mut()) };
         unsafe { glib_sys::g_io_channel_unref(self.channel) };
     }
+}
+
+#[cfg(unix)]
+fn create_channel(reader: &PipeReader) -> *mut glib_sys::GIOChannel {
+    let fd = reader.as_raw_fd();
+    unsafe { glib_sys::g_io_channel_unix_new(fd) }
+}
+
+#[cfg(windows)]
+fn create_channel(reader: &PipeReader) -> *mut glib_sys::GIOChannel {
+    let fd = reader.as_raw_handle();
+    unsafe { glib_sys::g_io_channel_win32_new_socket(fd) }
 }
 
 unsafe extern "C" fn io_watch_trampoline(source: *mut glib_sys::GIOChannel, _condition: glib_sys::GIOCondition, data: *mut libc::c_void) -> libc::c_int {
