@@ -96,7 +96,7 @@ fn create_channel(reader: &PipeReader) -> *mut glib_sys::GIOChannel {
 #[cfg(windows)]
 fn create_channel(reader: &PipeReader) -> *mut glib_sys::GIOChannel {
     let fd = reader.as_raw_handle();
-    unsafe { glib_sys::g_io_channel_win32_new_socket(fd) }
+    unsafe { g_io_channel_win32_new_socket(fd) }
 }
 
 unsafe extern "C" fn io_watch_trampoline(source: *mut glib_sys::GIOChannel, _condition: glib_sys::GIOCondition, data: *mut libc::c_void) -> libc::c_int {
