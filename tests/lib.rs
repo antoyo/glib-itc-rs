@@ -39,6 +39,7 @@ fn test() {
     let (mut sender, mut receiver) = channel();
     thread::spawn(move || {
         for _ in 0..5 {
+            println!("Send");
             sender.send();
         }
         sender.send();
