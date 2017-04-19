@@ -35,7 +35,7 @@ fn main() {
     gtk::init().unwrap();
 
     let num = AtomicUsize::new(0);
-    let (mut sender, mut receiver) = channel();
+    let (sender, mut receiver) = channel();
     thread::spawn(move || {
         for _ in 0..5 {
             sender.send();
