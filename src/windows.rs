@@ -31,7 +31,7 @@ pub struct SocketReceiver(TcpStream);
 impl SocketReceiver {
     pub fn to_channel(&self) -> *mut glib_sys::GIOChannel {
         let fd = self.0.as_raw_socket();
-        unsafe { g_io_channel_win32_new_socket(fd) }
+        unsafe { g_io_channel_win32_new_socket(fd as libc::c_int) }
     }
 }
 
