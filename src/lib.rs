@@ -63,20 +63,20 @@ impl Sender {
 
 pub struct Receiver {
     channel: *mut glib_sys::GIOChannel,
-    socket: UnixDatagram,
+    _socket: UnixDatagram,
 }
 
 impl Receiver {
     fn new(socket: UnixDatagram) -> Self {
+        let fd = socket.as_raw_fd();
+        let channel = unsafe { glib_sys::g_io_channel_unix_new(fd) };
         Receiver {
-            channel: null_mut(),
-            socket: socket,
+            channel: channel,
+            _socket: socket,
         }
     }
 
     pub fn connect_recv<F: FnMut() -> Continue + 'static>(&mut self, callback: F) {
-        let fd = self.socket.as_raw_fd();
-        self.channel = unsafe { glib_sys::g_io_channel_unix_new(fd) };
         let trampoline: glib_sys::GIOFunc = unsafe { transmute(io_watch_trampoline as usize) };
         let func: Box<Box<FnMut() -> Continue + 'static>> = Box::new(Box::new(callback));
         let user_data: *mut libc::c_void = Box::into_raw(func) as *mut _;
