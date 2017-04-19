@@ -96,7 +96,7 @@ fn create_channel(reader: &PipeReader) -> *mut glib_sys::GIOChannel {
 #[cfg(windows)]
 fn create_channel(reader: &PipeReader) -> *mut glib_sys::GIOChannel {
     let fd = reader.as_raw_handle();
-    unsafe { g_io_channel_win32_new_socket(fd as libc::c_int) }
+    unsafe { g_io_channel_win32_new_messages(fd as libc::c_ulong) }
 }
 
 unsafe extern "C" fn io_watch_trampoline(source: *mut glib_sys::GIOChannel, _condition: glib_sys::GIOCondition, data: *mut libc::c_void) -> libc::c_int {
@@ -107,5 +107,5 @@ unsafe extern "C" fn io_watch_trampoline(source: *mut glib_sys::GIOChannel, _con
 
 #[cfg(windows)]
 extern "C" {
-    pub fn g_io_channel_win32_new_socket(socket: libc::c_int) -> *mut glib_sys::GIOChannel;
+    pub fn g_io_channel_win32_new_messages(hwnd: libc::c_ulong) -> *mut glib_sys::GIOChannel;
 }
