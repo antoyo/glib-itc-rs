@@ -104,3 +104,8 @@ unsafe extern "C" fn io_watch_trampoline(source: *mut glib_sys::GIOChannel, _con
     let func: &Box<Fn() -> Continue + 'static> = &*(data as *const _);
     func().to_glib()
 }
+
+#[cfg(windows)]
+extern "C" {
+    pub fn g_io_channel_win32_new_socket(socket: libc::c_int) -> *mut glib_sys::GIOChannel;
+}
