@@ -92,7 +92,7 @@ fn create_channel(reader: &PipeReader) -> *mut glib_sys::GIOChannel {
     #[cfg(unix)]
     let fd = reader.as_raw_fd();
     #[cfg(windows)]
-    let fd = reader.as_raw_handle();
+    let fd = reader.as_raw_handle() as libc::c_int;
     unsafe { glib_sys::g_io_channel_unix_new(fd) }
 }
 
