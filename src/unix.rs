@@ -19,46 +19,35 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-extern crate glib;
-extern crate glib_itc;
-extern crate gtk;
+use std::io::{self, Error};
+use std::net::Shutdown;
+use std::os::unix::io::AsRawFd;
+use std::os::unix::net::UnixDatagram;
 
-use std::thread;
-use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering::Relaxed;
+use glib_sys;
 
-use glib::Continue;
-use glib_itc::channel;
+pub struct SocketReceiver(UnixDatagram);
 
-#[test]
-fn test() {
-    gtk::init().unwrap();
-
-    let num = Arc::new(AtomicUsize::new(0));
-    let (mut sender, mut receiver) = channel();
-    thread::spawn(move || {
-        for _ in 0..5 {
-            println!("Send");
-            sender.send();
-        }
-        sender.send();
-    });
-    {
-        let num = num.clone();
-        receiver.connect_recv(move || {
-            println!("Receive");
-            let value = num.fetch_add(1, Relaxed);
-            if value >= 5 {
-                gtk::main_quit();
-                Continue(false)
-            }
-            else {
-                Continue(true)
-            }
-        });
+impl SocketReceiver {
+    pub fn to_channel(&self) -> *mut glib_sys::GIOChannel {
+        let fd = self.0.as_raw_fd();
+        unsafe { glib_sys::g_io_channel_unix_new(fd) }
     }
-    gtk::main();
+}
 
-    assert_eq!(num.load(Relaxed), 6);
+pub struct SocketSender(UnixDatagram);
+
+impl SocketSender {
+    pub fn close(&self) -> Result<(), Error> {
+        self.0.shutdown(Shutdown::Both)
+    }
+
+    pub fn send(&self) -> io::Result<usize> {
+        self.0.send(b"")
+    }
+}
+
+pub fn pair() -> io::Result<(SocketSender, SocketReceiver)> {
+    let (sender_socket, receiver_socket) = UnixDatagram::pair()?;
+    Ok((SocketSender(sender_socket), SocketReceiver(receiver_socket)))
 }

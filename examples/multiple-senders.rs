@@ -42,8 +42,10 @@ fn main() {
         let sender = sender.clone();
         thread::spawn(move || {
             for _ in 0..3 {
-                let mut guard = sender.lock().unwrap();
-                guard.send();
+                {
+                    let mut sender = sender.lock().unwrap();
+                    sender.send();
+                }
                 println!("500ms");
                 thread::sleep(Duration::from_millis(500));
             }
@@ -51,14 +53,16 @@ fn main() {
     }
     thread::spawn(move || {
         for _ in 0..5 {
-            let mut guard = sender.lock().unwrap();
-            guard.send();
+            {
+                let mut sender = sender.lock().unwrap();
+                sender.send();
+            }
             println!("Send");
             thread::sleep(Duration::from_millis(1000));
         }
         println!("End");
-        let mut guard = sender.lock().unwrap();
-        guard.send();
+        let mut sender = sender.lock().unwrap();
+        sender.send();
     });
     receiver.connect_recv(move || {
         let value = num.load(Relaxed) + 1;
