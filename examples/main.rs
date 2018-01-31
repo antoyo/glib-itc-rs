@@ -38,14 +38,14 @@ fn main() {
     let (mut sender, mut receiver) = channel();
     thread::spawn(move || {
         for _ in 0..5 {
-            sender.send();
+            sender.send(());
             println!("Send");
             thread::sleep(Duration::from_millis(1000));
         }
         println!("End");
-        sender.send();
+        sender.send(());
     });
-    receiver.connect_recv(move || {
+    receiver.connect_recv(move |()| {
         let value = num.load(Relaxed) + 1;
         num.store(value, Relaxed);
         println!("Received");

@@ -40,13 +40,13 @@ fn test() {
     thread::spawn(move || {
         for _ in 0..5 {
             println!("Send");
-            sender.send();
+            sender.send(());
         }
-        sender.send();
+        sender.send(());
     });
     {
         let num = num.clone();
-        receiver.connect_recv(move || {
+        receiver.connect_recv(move |()| {
             println!("Receive");
             let value = num.fetch_add(1, Relaxed);
             if value >= 5 {

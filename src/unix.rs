@@ -20,9 +20,11 @@
  */
 
 use std::io::{self, Error};
+use std::mem::transmute;
 use std::net::Shutdown;
 use std::os::unix::io::AsRawFd;
 use std::os::unix::net::UnixDatagram;
+use std::ptr;
 
 use glib_sys;
 
@@ -31,7 +33,11 @@ pub struct SocketReceiver(UnixDatagram);
 impl SocketReceiver {
     pub fn to_channel(&self) -> *mut glib_sys::GIOChannel {
         let fd = self.0.as_raw_fd();
-        unsafe { glib_sys::g_io_channel_unix_new(fd) }
+        unsafe {
+            let channel = glib_sys::g_io_channel_unix_new(fd);
+            glib_sys::g_io_channel_set_encoding(channel, ptr::null(), ptr::null_mut());
+            channel
+        }
     }
 }
 
@@ -42,8 +48,10 @@ impl SocketSender {
         self.0.shutdown(Shutdown::Both)
     }
 
-    pub fn send(&self) -> io::Result<usize> {
-        self.0.send(b"")
+    pub fn send<T>(&self, data: T) -> io::Result<usize> {
+        let data = Box::into_raw(Box::new(data)) as i64;
+        let array: [u8; 8] = unsafe { transmute(data) };
+        self.0.send(&array)
     }
 }
 

@@ -20,8 +20,9 @@
  */
 
 use std::io::{self, Error, Write};
-use std::os::windows::io::AsRawSocket;
+use std::mem::transmute;
 use std::net::{Shutdown, TcpListener, TcpStream};
+use std::os::windows::io::AsRawSocket;
 
 use glib_sys;
 use libc;
@@ -31,7 +32,11 @@ pub struct SocketReceiver(TcpStream);
 impl SocketReceiver {
     pub fn to_channel(&self) -> *mut glib_sys::GIOChannel {
         let fd = self.0.as_raw_socket();
-        unsafe { g_io_channel_win32_new_socket(fd as libc::c_int) }
+        unsafe {
+            let channel = g_io_channel_win32_new_socket(fd as libc::c_int);
+            glib_sys::g_io_channel_set_encoding(channel, ptr::null(), ptr::null_mut());
+            channel
+        }
     }
 }
 
@@ -42,8 +47,10 @@ impl SocketSender {
         self.0.shutdown(Shutdown::Both)
     }
 
-    pub fn send(&mut self) -> io::Result<usize> {
-        self.0.write(b" ")
+    pub fn send<T>(&self, data: T) -> io::Result<usize> {
+        let data = Box::into_raw(Box::new(data)) as i64;
+        let array: [u8; 8] = unsafe { transmute(data) };
+        self.0.write(&array)
     }
 }
 
